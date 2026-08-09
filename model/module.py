@@ -168,22 +168,6 @@ class TransformerBlock(nn.Module):
     
 
 
-class Transformer_rep(nn.Module):
-    def __init__(self, args):
-        super(Transformer_rep, self).__init__()
-        self.hidden_size = args.hidden_size
-        self.heads = 4
-        self.dropout = args.dropout
-        self.n_blocks = args.num_blocks
-        self.transformer_blocks = nn.ModuleList(
-            [TransformerBlock(self.hidden_size, self.heads, self.dropout) for _ in range(self.n_blocks)])
-
-    def forward(self, hidden, mask):
-        for transformer in self.transformer_blocks:
-            hidden = transformer.forward(hidden, mask)
-        return hidden
-
-
 class VectorQuantizer(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, dropout_rate, commitment_cost=4):
         super().__init__()
@@ -226,7 +210,7 @@ class VectorQuantizer(nn.Module):
         loss = q_loss + self.commitment_cost * e_loss
 
         # 直通梯度
-        #quantized_flat = z_e_flat + (quantized_flat - z_e_flat).detach()
+        quantized_flat = z_e_flat + (quantized_flat - z_e_flat).detach()
 
         # 恢复原始维度
         quantized = quantized_flat.view(z_e.shape)
@@ -285,7 +269,7 @@ class SequenceVectorQuantizer(nn.Module):
         self.embeddings = nn.Embedding(self.num_embeddings, self.max_len * self.embedding_dim)
         nn.init.uniform_(self.embeddings.weight, -1/self.num_embeddings, 1/self.num_embeddings)
         self.dropout = nn.Dropout(self.dropout_rate)
-        self.layernorm = nn.LayerNorm(self.max_len * self.num_embeddings)
+        self.layernorm = nn.LayerNorm(self.max_len * self.embedding_dim)
 
     def forward(self, z_e, mask):
         # 输入：z_e: [B, L, D]
@@ -325,7 +309,6 @@ class SequenceVectorQuantizer(nn.Module):
 
         return quantized, loss, perplexity
     
-
 
 
 
